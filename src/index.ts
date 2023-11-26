@@ -2,19 +2,17 @@
 type Options = {
   version?: string;
   endpoint?: string;
+
+  /** 取得したアプリケーションIDを指定して下さい。 */
+  appid?: string,
 }
 
-const DEFAULT_OPTIONS: Required<Options> = {
+const DEFAULT_OPTIONS: Omit<Required<Options>, 'appid'> = {
   version: '3.0',
   endpoint: 'https://api.e-stat.go.jp/rest/',
 }
 
-/**
- * 全API共通パラメータ
- */
-interface Params {
-  /** 取得したアプリケーションIDを指定して下さい。 */
-  appid: string,
+interface Param {
   /**
    * 取得するデータの言語を 以下のいずれかを指定して下さい。
    * ・J：日本語 (省略値)
@@ -26,7 +24,7 @@ interface Params {
 /**
  * 統計表情報取得パラメータ
  */
-interface GetStatsListParam extends Params {
+interface GetStatsListParam extends Param {
   /**
    * 調査年月
    * 以下のいずれかの形式で指定して下さい。
@@ -108,7 +106,7 @@ interface GetStatsListParam extends Params {
 /**
  * メタ情報取得パラメータ
  */
-interface GetMetaInfoParams extends Params {
+interface GetMetaInfoParams extends Param {
   /**
    * 「統計表情報取得」で得られる統計表IDです。
    */
@@ -118,7 +116,7 @@ interface GetMetaInfoParams extends Params {
 /**
  * 統計データ取得パラメータ
  */
-type GetStatsDataParams = Params & (
+type GetStatsDataParams = Param & (
   { dataSetId: string; statsDataId?: never } |
   { dataSetId?: never; statsDataId: string }
 ) & {
@@ -295,7 +293,7 @@ type GetStatsDataParams = Params & (
 /**
  * データセット登録パラメータ
  */
-type PostDatasetParams = Params & (
+type PostDatasetParams = Param & (
   { dataSetId: string; statsDataId?: never } |
   { dataSetId?: never; statsDataId: string }
 ) & {
@@ -449,7 +447,7 @@ type PostDatasetParams = Params & (
 /**
  * データセット参照パラメータ
  */
-interface RefDatasetParams extends Params {
+interface RefDatasetParams extends Param {
   /**
    * 「データセット登録」で登録したデータセットIDです。
    * 省略時は 利用可能なデータセットの一覧を取得します。
@@ -460,7 +458,7 @@ interface RefDatasetParams extends Params {
 /**
  * データカタログ情報取得パラメータ
  */
-interface GetDataCatalogParams extends Params {
+interface GetDataCatalogParams extends Param {
   /**
    * 調査年月	－	以下のいずれかの形式で指定して下さい。
    * ・yyyy：単年検索
@@ -531,29 +529,31 @@ interface GetDataCatalogParams extends Params {
   updatedDate?: string
 }
 
-const toSearchParams = (params: Params) => {
+const toSearchParams = (params: Param) => {
   const searchParams = new URLSearchParams()
   for (const key in params) {
-    const value = params[key]
+    const value = params[key as keyof Param]
     if(value !== undefined) {
-      searchParams.append(key, params[key])
+      searchParams.append(key, value)
     }
   }
   return searchParams.toString()
 }
 
-interface Response<p extends Params> {
-  RESULT: {},
-  STATUS: number,
-  ERROR_MSG: string,
-  DATE: string,
-}
+// interface Response<p extends Param> {
+//   RESULT: {},
+//   STATUS: number,
+//   ERROR_MSG: string,
+//   DATE: string,
+// }
 
 export class Client {
   public options: Required<Options>;
   public baseUrl: string
-  constructor(options: Options = {}) {
-    this.options = { ...DEFAULT_OPTIONS, ...options};
+  constructor(options: Options) {
+    const appid = process.env.ESTAT_APP_ID || options.appid
+    if(!appid) throw new Error('appid is required')
+    this.options = { ...DEFAULT_OPTIONS, ...options, appid };
     this.baseUrl = `${this.options.endpoint}/${this.options.version}/app/json/`
   }
 
