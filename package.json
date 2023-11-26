@@ -1,5 +1,5 @@
 {
-  "name": "e-stat-client",
+  "name": "@kamataryo/e-stat-client",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",

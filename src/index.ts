@@ -1,13 +1,15 @@
+import path from "node:path";
 
 type Options = {
   version?: string;
   endpoint?: string;
 
   /** 取得したアプリケーションIDを指定して下さい。 */
-  appid?: string,
+  appId?: string,
+  limit?:number,
 }
 
-const DEFAULT_OPTIONS: Omit<Required<Options>, 'appid'> = {
+const DEFAULT_OPTIONS: Omit<Required<Options>, 'appId' | 'limit'> = {
   version: '3.0',
   endpoint: 'https://api.e-stat.go.jp/rest/',
 }
@@ -529,8 +531,10 @@ interface GetDataCatalogParams extends Param {
   updatedDate?: string
 }
 
-const toSearchParams = (params: Param) => {
+const toSearchParams = (appId: string, limit: number, params: Param) => {
   const searchParams = new URLSearchParams()
+  searchParams.append('appId', appId)
+  searchParams.append('limit', String(limit))
   for (const key in params) {
     const value = params[key as keyof Param]
     if(value !== undefined) {
@@ -540,21 +544,15 @@ const toSearchParams = (params: Param) => {
   return searchParams.toString()
 }
 
-// interface Response<p extends Param> {
-//   RESULT: {},
-//   STATUS: number,
-//   ERROR_MSG: string,
-//   DATE: string,
-// }
-
 export class Client {
   public options: Required<Options>;
   public baseUrl: string
-  constructor(options: Options) {
-    const appid = process.env.ESTAT_APP_ID || options.appid
-    if(!appid) throw new Error('appid is required')
-    this.options = { ...DEFAULT_OPTIONS, ...options, appid };
-    this.baseUrl = `${this.options.endpoint}/${this.options.version}/app/json/`
+  constructor(options: Options = {}) {
+    const appId = options.appId || process.env.ESTAT_APP_ID
+    const limit = options.limit || 10
+    if(!appId) throw new Error('appId is required')
+    this.options = { appId, limit, ...DEFAULT_OPTIONS, ...options };
+    this.baseUrl = path.join(this.options.endpoint, this.options.version, 'app', 'json')
   }
 
   /**
@@ -562,8 +560,10 @@ export class Client {
    * @param params 統計表情報取得パラメータ
    * @returns
    */
-  async getStatsList(params: GetStatsListParam) {
-    const url = `${this.baseUrl}/getStatList?${toSearchParams(params)}`
+  async getStatsList(params: GetStatsListParam = {}) {
+    const appId = this.options.appId
+    const limit = this.options.limit
+    const url = path.join(this.baseUrl, `getStatsList?${toSearchParams(appId, limit, params)}`)
     const response = await fetch(url)
     return response.json()
   }
@@ -574,7 +574,9 @@ export class Client {
    * @returns
    */
   async getMetaInfo(params: GetMetaInfoParams) {
-    const url = `${this.baseUrl}/getMetaInfo?${toSearchParams(params)}`
+    const appId = this.options.appId
+    const limit = this.options.limit
+    const url = path.join(this.baseUrl, `getMetaInfo?${toSearchParams(appId, limit, params)}`)
     const response = await fetch(url)
     return response.json()
   }
@@ -585,7 +587,9 @@ export class Client {
    * @returns
    */
   async getStatsData(params: GetStatsDataParams) {
-    const url = `${this.baseUrl}/getStatsData?${toSearchParams(params)}`
+    const appId = this.options.appId
+    const limit = this.options.limit
+    const url = path.join(this.baseUrl, `getStatsData?${toSearchParams(appId, limit, params)}`)
     const response = await fetch(url)
     return response.json()
   }
@@ -596,13 +600,16 @@ export class Client {
    * @returns
    */
   async postDataset(params: PostDatasetParams) {
-    const url = `${this.baseUrl}/postDataset?${toSearchParams(params)}`
+    const appId = this.options.appId
+    // TODO: 未検証
+    const url = path.join(this.baseUrl, `postDataset?${toSearchParams(appId, 1000, params)}`)
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: toSearchParams(params)
+    // TODO: 未検証
+    // body: toSearchParams(null, null, params)
     })
     return response.json()
   }
@@ -613,7 +620,9 @@ export class Client {
    * @returns
    */
   async refDataset(params: RefDatasetParams) {
-    const url = `${this.baseUrl}/refDataset?${toSearchParams(params)}`
+    const appId = this.options.appId
+    const limit = this.options.limit
+    const url = path.join(this.baseUrl, `refDataset?${toSearchParams(appId, limit, params)}`)
     const response = await fetch(url)
     return response.json()
   }
@@ -624,7 +633,9 @@ export class Client {
    * @returns
    */
   async getDataCatalog(params: GetDataCatalogParams) {
-    const url = `${this.baseUrl}/getDataCatalog?${toSearchParams(params)}`
+    const appId = this.options.appId
+    const limit = this.options.limit
+    const url = path.join(this.baseUrl, `getDataCatalog?${toSearchParams(appId, limit, params)}`)
     const response = await fetch(url)
     return response.json()
   }
